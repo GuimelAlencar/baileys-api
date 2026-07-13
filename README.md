@@ -1,4 +1,4 @@
-# 🚀 Baileys API
+# 🚀 Baileys API 
 
 API REST em Node.js que automatiza o envio de mensagens de texto e documentos PDF via WhatsApp usando [Baileys](https://github.com/WhiskeySockets/Baileys), sem depender da WhatsApp Business API oficial. Pensada para notificações de baixo volume com custo mínimo de infraestrutura.
 
