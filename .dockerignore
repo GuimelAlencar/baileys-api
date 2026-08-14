@@ -1,9 +1,16 @@
 node_modules
 npm-debug.log
 .env
+.env.*
 .git
 .gitignore
 .idea
 data/*.json
 auth_info
 logs
+coverage/
+specs/
+.specify/
+.claude/
+.DS_Store
+Thumbs.db

@@ -6,16 +6,21 @@ const bodyParser = require('body-parser');
 const swaggerUi = require('swagger-ui-express');
 
 const logger = require('./config/logger');
+require('./config/database'); // initialize pool on startup
 const swaggerSpec = require('./config/swagger');
+const authenticate = require('./middleware/authenticate');
 const systemRoutes = require('./routes/systemRoutes');
 const phoneRoutes = require('./routes/phoneRoutes');
 const messageRoutes = require('./routes/messageRoutes');
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
 const PhoneService = require('./services/PhoneService');
 const SessionManager = require('./services/SessionManager');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(bodyParser.json());
 
@@ -27,6 +32,10 @@ app.get('/api-docs.json', (req, res) => {
 
 app.use(systemRoutes);
 
+app.use(authenticate);
+
+app.use('/auth', authRoutes);
+app.use('/users', userRoutes);
 app.use('/api/phones', phoneRoutes);
 app.use('/api/messages', messageRoutes);
 
@@ -57,4 +66,8 @@ async function start() {
   });
 }
 
-start();
+if (require.main === module) {
+  start();
+}
+
+module.exports = app;

@@ -1,0 +1,482 @@
+openapi: "3.0.3"
+info:
+  title: Baileys API — Authentication & User Management
+  version: "1.0.0"
+  description: |
+    Authentication endpoints (public) and user management endpoints (admin-only)
+    for the Baileys WhatsApp REST API.
+
+    All protected endpoints require a Bearer JWT access token in the Authorization header.
+    The /auth/login and /auth/refresh endpoints are public.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [admin, operator]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, email, displayName, role, isActive, createdAt, updatedAt]
+
+    TokenPair:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token. Include in Authorization: Bearer <token> header.
+        refreshToken:
+          type: string
+          description: Opaque refresh token. Store securely; single-use.
+        expiresIn:
+          type: integer
+          description: Access token lifetime in seconds.
+      required: [accessToken, refreshToken, expiresIn]
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+      required: [success, error]
+
+    PaginatedUsers:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            users:
+              type: array
+              items:
+                $ref: "#/components/schemas/User"
+            total:
+              type: integer
+            page:
+              type: integer
+            limit:
+              type: integer
+          required: [users, total, page, limit]
+      required: [success, data]
+
+  responses:
+    Unauthorized:
+      description: Missing, expired, or invalid access token.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            error: "Access token missing or expired"
+
+    Forbidden:
+      description: Valid token but insufficient role permissions.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            error: "Insufficient permissions"
+
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            error: "User not found"
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      summary: Log in with email and password
+      description: |
+        Public endpoint. Returns an access token (short-lived JWT) and a refresh token
+        (single-use, 7-day lifetime). Subject to per-IP rate limiting.
+      security: []
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+              required: [email, password]
+            example:
+              email: "admin@example.com"
+              password: "s3cr3tP@ss"
+      responses:
+        "200":
+          description: Login successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/TokenPair"
+              example:
+                success: true
+                data:
+                  accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refreshToken: "a1b2c3d4e5f6..."
+                  expiresIn: 900
+        "400":
+          description: Validation error (malformed email, missing fields).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Invalid credentials or inactive account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                invalidCredentials:
+                  value:
+                    success: false
+                    error: "Invalid email or password"
+                inactiveAccount:
+                  value:
+                    success: false
+                    error: "Account is inactive"
+        "429":
+          description: Too many login attempts from this IP.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                success: false
+                error: "Too many login attempts. Please try again later."
+
+  /auth/refresh:
+    post:
+      summary: Refresh the access token
+      description: |
+        Public endpoint. Accepts a valid, unused refresh token and returns a new token pair.
+        The presented refresh token is immediately invalidated (single-use rotation).
+      security: []
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+              required: [refreshToken]
+            example:
+              refreshToken: "a1b2c3d4e5f6..."
+      responses:
+        "200":
+          description: Token refreshed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/TokenPair"
+        "401":
+          description: Refresh token is invalid, already used, expired, or belongs to an inactive user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                success: false
+                error: "Refresh token is invalid or expired"
+
+  /auth/logout:
+    post:
+      summary: Log out (invalidate all refresh tokens)
+      description: |
+        Protected endpoint. Immediately invalidates **all** refresh tokens for the
+        authenticated user across all devices. The caller's current access token
+        remains valid until its natural expiry.
+      tags: [Authentication]
+      responses:
+        "200":
+          description: Logged out successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Logged out from all devices"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /users:
+    post:
+      summary: Create a new user (admin only)
+      tags: [User Management]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                displayName:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                password:
+                  type: string
+                  minLength: 8
+                role:
+                  type: string
+                  enum: [admin, operator]
+              required: [email, displayName, password, role]
+            example:
+              email: "operator@example.com"
+              displayName: "João Operador"
+              password: "op3r@torP@ss"
+              role: "operator"
+      responses:
+        "201":
+          description: User created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Email already registered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                success: false
+                error: "Email already registered"
+
+    get:
+      summary: List all users (admin only)
+      tags: [User Management]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        "200":
+          description: Paginated user list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedUsers"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get a user by ID (admin only)
+      tags: [User Management]
+      responses:
+        "200":
+          description: User details.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      summary: Update a user's display name or role (admin only)
+      tags: [User Management]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                role:
+                  type: string
+                  enum: [admin, operator]
+              minProperties: 1
+            example:
+              role: "admin"
+      responses:
+        "200":
+          description: User updated. New role takes effect on the user's next request.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error or attempt to self-edit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /users/{id}/deactivate:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    patch:
+      summary: Deactivate a user (admin only)
+      description: |
+        Sets the user's `isActive` to false and immediately revokes all their refresh tokens.
+        Existing access tokens remain valid until natural expiry. Self-deactivation is rejected.
+      tags: [User Management]
+      responses:
+        "200":
+          description: User deactivated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/User"
+        "400":
+          description: Attempt to deactivate own account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                success: false
+                error: "Cannot deactivate your own account"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"

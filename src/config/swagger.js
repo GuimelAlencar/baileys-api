@@ -7,9 +7,18 @@ const options = {
       title: 'WhatsApp API (Baileys)',
       version: '1.0.0',
       description:
-        'API REST para gerenciar numeros de WhatsApp e enviar mensagens de texto e PDFs usando Baileys.',
+        'API REST para gerenciar numeros de WhatsApp, autenticacao JWT e envio de mensagens de texto e PDFs usando Baileys.',
     },
     servers: [{ url: '/', description: 'Servidor atual' }],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
   },
   apis: ['./src/routes/*.js'],
 };

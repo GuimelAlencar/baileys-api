@@ -1,4 +1,20 @@
 services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: baileys-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-baileys}
+      POSTGRES_USER: ${POSTGRES_USER:-baileys}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-baileys_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-baileys} -d ${POSTGRES_DB:-baileys}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   baileys-api:
     build: .
     container_name: baileys-api
@@ -9,6 +25,18 @@ services:
       - PORT=3000
       - NODE_ENV=production
       - LOG_LEVEL=info
+      - DATABASE_URL=${DATABASE_URL:-postgresql://baileys:baileys_secret@postgres:5432/baileys}
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production-min32}
+      - JWT_ACCESS_TTL=${JWT_ACCESS_TTL:-15m}
+      - LOGIN_RATE_LIMIT_PER_MINUTE=${LOGIN_RATE_LIMIT_PER_MINUTE:-10}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin@1234}
+      - ADMIN_DISPLAY_NAME=${ADMIN_DISPLAY_NAME:-Administrator}
     volumes:
-      - ./data:/app/data
-      - ./auth_info:/app/auth_info
+      - ./data:/app/data:z
+      - ./auth_info:/app/auth_info:z
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:

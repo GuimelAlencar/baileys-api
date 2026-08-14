@@ -6,17 +6,35 @@
   "type": "commonjs",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "test": "jest",
+    "migrate:up": "node-pg-migrate up",
+    "migrate:down": "node-pg-migrate down",
+    "seed:admin": "node src/scripts/seed-admin.js"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "moduleNameMapper": {
+      "^@whiskeysockets/baileys$": "<rootDir>/tests/__mocks__/baileys.js"
+    }
   },
   "license": "MIT",
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.9",
     "axios": "^1.7.9",
+    "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-rate-limit": "^7.4.1",
+    "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
+    "node-pg-migrate": "^7.8.0",
+    "pg": "^8.13.1",
     "pino": "^8.17.2",
     "qrcode": "^1.5.4",
     "swagger-jsdoc": "^6.2.8",
@@ -24,6 +42,8 @@
     "uuid": "^11.0.5"
   },
   "devDependencies": {
-    "pino-pretty": "^11.3.0"
+    "jest": "^29.7.0",
+    "pino-pretty": "^11.3.0",
+    "supertest": "^7.0.0"
   }
 }

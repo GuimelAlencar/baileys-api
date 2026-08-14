@@ -1,5 +1,6 @@
 const express = require('express');
 const PhoneController = require('../controllers/PhoneController');
+const authorize = require('../middleware/authorize');
 
 const router = express.Router();
 
@@ -24,6 +25,8 @@ const router = express.Router();
  *   post:
  *     summary: Cria um novo numero e inicia a sessao Baileys
  *     tags: [Phones]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -37,8 +40,10 @@ const router = express.Router();
  *     responses:
  *       201: { description: Numero criado }
  *       400: { description: Dados invalidos }
+ *       401: { description: Token ausente ou expirado }
+ *       403: { description: Permissao insuficiente }
  */
-router.post('/', PhoneController.createPhone);
+router.post('/', authorize(['admin']), PhoneController.createPhone);
 
 /**
  * @openapi
@@ -46,10 +51,13 @@ router.post('/', PhoneController.createPhone);
  *   get:
  *     summary: Lista todos os numeros cadastrados
  *     tags: [Phones]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200: { description: Lista de numeros }
+ *       401: { description: Token ausente ou expirado }
  */
-router.get('/', PhoneController.getAllPhones);
+router.get('/', authorize(['admin', 'operator']), PhoneController.getAllPhones);
 
 /**
  * @openapi
@@ -57,6 +65,8 @@ router.get('/', PhoneController.getAllPhones);
  *   get:
  *     summary: Obtem detalhes de um numero
  *     tags: [Phones]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -64,9 +74,10 @@ router.get('/', PhoneController.getAllPhones);
  *         schema: { type: string }
  *     responses:
  *       200: { description: Numero encontrado }
+ *       401: { description: Token ausente ou expirado }
  *       404: { description: Numero nao encontrado }
  */
-router.get('/:id', PhoneController.getPhoneById);
+router.get('/:id', authorize(['admin', 'operator']), PhoneController.getPhoneById);
 
 /**
  * @openapi
@@ -74,6 +85,8 @@ router.get('/:id', PhoneController.getPhoneById);
  *   put:
  *     summary: Atualiza o nome de exibicao de um numero
  *     tags: [Phones]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -88,9 +101,11 @@ router.get('/:id', PhoneController.getPhoneById);
  *               displayName: { type: string }
  *     responses:
  *       200: { description: Numero atualizado }
+ *       401: { description: Token ausente ou expirado }
+ *       403: { description: Permissao insuficiente }
  *       404: { description: Numero nao encontrado }
  */
-router.put('/:id', PhoneController.updatePhone);
+router.put('/:id', authorize(['admin']), PhoneController.updatePhone);
 
 /**
  * @openapi
@@ -98,6 +113,8 @@ router.put('/:id', PhoneController.updatePhone);
  *   delete:
  *     summary: Remove um numero e encerra a sessao
  *     tags: [Phones]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -105,9 +122,11 @@ router.put('/:id', PhoneController.updatePhone);
  *         schema: { type: string }
  *     responses:
  *       200: { description: Numero removido }
+ *       401: { description: Token ausente ou expirado }
+ *       403: { description: Permissao insuficiente }
  *       404: { description: Numero nao encontrado }
  */
-router.delete('/:id', PhoneController.deletePhone);
+router.delete('/:id', authorize(['admin']), PhoneController.deletePhone);
 
 /**
  * @openapi
@@ -115,6 +134,8 @@ router.delete('/:id', PhoneController.deletePhone);
  *   get:
  *     summary: Retorna o QR code (base64) para autenticar o numero
  *     tags: [Phones]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -122,10 +143,11 @@ router.delete('/:id', PhoneController.deletePhone);
  *         schema: { type: string }
  *     responses:
  *       200: { description: QR code disponivel }
+ *       401: { description: Token ausente ou expirado }
  *       404: { description: Numero nao encontrado }
  *       503: { description: QR code ainda nao gerado }
  */
-router.get('/:id/qrcode', PhoneController.getQRCode);
+router.get('/:id/qrcode', authorize(['admin', 'operator']), PhoneController.getQRCode);
 
 /**
  * @openapi
@@ -133,6 +155,8 @@ router.get('/:id/qrcode', PhoneController.getQRCode);
  *   get:
  *     summary: Verifica o status de conexao de um numero
  *     tags: [Phones]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -140,8 +164,9 @@ router.get('/:id/qrcode', PhoneController.getQRCode);
  *         schema: { type: string }
  *     responses:
  *       200: { description: Status atual }
+ *       401: { description: Token ausente ou expirado }
  *       404: { description: Numero nao encontrado }
  */
-router.get('/:id/status', PhoneController.getPhoneStatus);
+router.get('/:id/status', authorize(['admin', 'operator']), PhoneController.getPhoneStatus);
 
 module.exports = router;

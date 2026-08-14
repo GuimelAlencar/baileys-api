@@ -1,6 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const MessageController = require('../controllers/MessageController');
+const authorize = require('../middleware/authorize');
 
 const router = express.Router();
 
@@ -30,6 +31,8 @@ function uploadPdf(req, res, next) {
  *   post:
  *     summary: Envia uma mensagem de texto
  *     tags: [Messages]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -44,8 +47,9 @@ function uploadPdf(req, res, next) {
  *     responses:
  *       200: { description: Mensagem enviada }
  *       400: { description: Dados invalidos ou numero desconectado }
+ *       401: { description: Token ausente ou expirado }
  */
-router.post('/send', MessageController.sendSimpleMessage);
+router.post('/send', authorize(['admin', 'operator']), MessageController.sendSimpleMessage);
 
 /**
  * @openapi
@@ -53,6 +57,8 @@ router.post('/send', MessageController.sendSimpleMessage);
  *   post:
  *     summary: Envia um documento PDF (upload direto via multipart/form-data)
  *     tags: [Messages]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -68,7 +74,8 @@ router.post('/send', MessageController.sendSimpleMessage);
  *     responses:
  *       200: { description: PDF enviado }
  *       400: { description: Dados invalidos, arquivo ausente/invalido ou numero desconectado }
+ *       401: { description: Token ausente ou expirado }
  */
-router.post('/send-pdf', uploadPdf, MessageController.sendPdfMessage);
+router.post('/send-pdf', authorize(['admin', 'operator']), uploadPdf, MessageController.sendPdfMessage);
 
 module.exports = router;
